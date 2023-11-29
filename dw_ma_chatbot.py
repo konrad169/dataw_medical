@@ -1,13 +1,11 @@
 import base64
 import os
-import os
 os.path.abspath(os.getcwd())
 import streamlit as st
-
-from converter_utils import extract_docx, pdf_to_base64_images
+from PIL import Image
+from converter_utils import extract_docx, pdf_to_base64_images, CustomPDF
 from form_utils import dict_messages_button, get_question_chat
 from open_ai_utils import image_input_to_chat, get_text_to_chat
-from output_files import create_pdf_with_logo_and_text
 
 path = os.path.dirname(__file__)
 logo_name = path + "/assets/logo_datawizard.png"
@@ -17,41 +15,17 @@ for k, v in st.session_state.items():
     st.session_state[k] = v
 
 def download_pdf(text,pdf_path):
-    create_pdf_with_logo_and_text(logo_path=f"{path}assets/DataWizard.png",text=text,output_path=pdf_path)
+    #create_pdf_with_logo_and_text(logo_path=f"{path}assets/DataWizard.png",text=text,output_path=pdf_path)
+    file_pdf=CustomPDF().save_pdf(w=0,h=6,txt=text,destination_path=pdf_path)
     with open(pdf_path, "rb") as pdf_file:
         pdf_bytes = pdf_file.read()
     st.download_button(
         label="Scarica PDF",
         data=pdf_bytes,
-        file_name="output.pdf",
+        file_name="Report_interazione_chat.pdf",
         mime='application/pdf',
         on_click=handle_download)
-# def select_and_confirm(key=int):
-#     # Inizializza lo stato della sessione se non esiste
-#     if "selected_value" not in st.session_state:
-#         st.session_state["selected_value"] = None
-#
-#     # Mostra la select box solo se non è stato ancora selezionato un valore
-#     if st.session_state["selected_value"] is None:
-#         place_h=st.empty()
-#         #button_h=st.empty()
-#         options = ["Opzione 1", "Opzione 2", "Opzione 3",  "Risposta prompt"]
-#         selected_option = place_h.selectbox("Scegli un'opzione", options,key=key,index=None, placeholder="Scegli una risposta...")
-#         st.session_state.created_selection=True
-#
-#         # Se l'utente ha selezionato un'opzione, mostra il bottone di conferma
-#         #if st.button("Conferma",key=key_but):
-#         st.session_state["selected_value"] = selected_option
-#
-#             #s.empty()
-#         st.session_state.created_selection=None
-#         if selected_option:
-#             place_h.empty()
-#     # Se è stato selezionato un valore, ritorna il valore e nasconde la select box e il bottone
-#     if st.session_state["selected_value"] is not None:
-#         to_return=st.session_state.selected_value
-#         st.session_state.selected_value=None
-#         return to_return
+
 def select_and_confirm():
     if (st.session_state.show_messages):
         options =get_question_chat(genre)
@@ -94,7 +68,8 @@ def select_and_confirm():
                 with st.chat_message("assistant"):
                     st.markdown(response, unsafe_allow_html=True)
                 st.session_state.messages.append({"role": "assistant", "content": response})
-                download_pdf(response,f"{path}temp/output_generated.pdf")
+
+                download_pdf(response.encode('utf-8').decode(),f"{path}temp/output_generated.pdf")
             else:
                 ##TODO:POSSIAMO SCOMMENTARLO
                 #st.session_state.messages.append({"role":"system","content": "Conversazione conclusa"})
@@ -244,17 +219,27 @@ if image_file:
     if not st.session_state.already_asked:
         match extension:
             case 'pdf':
-                base64_list = pdf_to_base64_images(f'{path}temp/{image_file.name}')
+                with st.spinner("Caricamento del file in corso ed estrazione del testo per formulare la richiesta.."):
+                    base64_list = pdf_to_base64_images(f'{path}temp/{image_file.name}')
             case 'docx', 'doc':
-                text_doc = extract_docx(file_path=f'{path}temp/{image_file.name}')
+                with st.spinner("Caricamento del file in corso ed estrazione del testo per formulare la richiesta.."):
+                    text_doc = extract_docx(file_path=f'{path}temp/{image_file.name}')
             case "jpg" | "jpeg" | "png":
                 # medical_image = Image.open(image_file)
                 image_content = image_file.read()
                 base64_image = base64.b64encode(image_content).decode('utf-8')
             case _:
                 st.error("Formato file non valido.. Riprovare il caricamento")
-
-    if extension in ['docx', 'png', 'pdf'] and not st.session_state.already_asked:
+    if extension in ["jpeg","jpg","png"]:
+        our_image=Image.open(image_file)
+        if st.sidebar.button("Image Preview"):
+            st.sidebar.image(our_image, width=300)
+            show_chat_messages()
+    else:
+        if st.sidebar.button("Image Preview"):
+            st.sidebar.info("attualmente la preview è disponibile solo per le immagini")
+            show_chat_messages()
+    if extension in ['docx', 'png','jpeg','jpg','pdf'] and not st.session_state.already_asked:
         message_text = dict_messages_button.get(genre)
         if "openai_model" not in st.session_state:
             st.session_state["openai_model"] = "gpt-4-1106-preview"
@@ -300,6 +285,7 @@ if image_file:
             message_placeholder.markdown(full_response)
         st.session_state.messages.append({"role": "assistant", "content": full_response})
     response = select_and_confirm()
+
 
     # if response:
     #     full_response += response  # .choices[0].delta.get("content", "")

@@ -15,8 +15,7 @@ pdf2image = "*"
 pypdf2 = "*"
 reportlab="*"
 poppler-utils="*"
-
-
+fpdf = "*"
 
 [dev-packages]
 

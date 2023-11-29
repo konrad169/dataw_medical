@@ -1,3 +1,4 @@
+from fpdf import FPDF
 import fitz
 import docx2txt
 import base64
@@ -5,6 +6,7 @@ import io
 import pdf2image
 import os
 import glob
+path=str(os.path.abspath(os.getcwd()))+"/"
 def convert_pdf_to_images(filepath: str, output: str = None):
     doc = fitz.open(filepath)
     page = doc.load_page(0)  # number of page
@@ -25,7 +27,6 @@ def pdf_to_base64_images(pdf_file):
     Returns:
       Una lista di stringhe base64, ognuna delle quali rappresenta una pagina del PDF.
     """
-
     with open(pdf_file, "rb") as f:
         pdf = pdf2image.convert_from_bytes(f.read())
 
@@ -46,7 +47,16 @@ def svuota_cartella(cartella):
     for f in files:
         os.remove(f)
 
-
+class CustomPDF(FPDF):
+    def header(self):
+        self.image(f"{path}assets/DataWizard.png", w=80, h=50)
+    def save_pdf(self, w, h, txt, destination_path: str):
+        self.set_margins(left=20, top=0, right=20)
+        self.add_page()
+        self.set_font("Arial", size=14)
+        self.set_auto_page_break(True, 3)
+        self.multi_cell(w=w,h=h,txt = txt)
+        self.output(destination_path)
 
 if __name__ == '__main__':
     # Esempio di utilizzo
