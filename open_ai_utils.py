@@ -30,9 +30,12 @@ def is_valid_response(response):
                          "Purtroppo, non posso aiutarti a interpretare i risultati di esami medici specifici come referti di analisi del sangue o altre indagini diagnostiche.",
                          "Mi scuso, ma come AI non posso fornire un'interpretazione di immagini o file contenenti dati medici reali",
                          "Mi scuso ma non posso aiutare con l'interpretazione di risultati di esami medici."
-                         "Mi scuso ma non posso aiutare"
+                         "Mi scuso ma non posso aiutare",
+                         "Mi spiace, non posso aiutarti con questo",
+                         "Mi dispiace, ma non posso aiutarti con l'interpretazione di documenti medici reali.",
+                         "Mi spiace",
                          "Mi scuso, ma come AI non posso"]
-    starting_words=["Purtroppo non", "Mi dispiace", "Scusa", "Non posso", "Non ho le informazioni","Purtroppo non posso", "Mi scuso ma"]
+    starting_words=["Purtroppo non", "Mi dispiace", "Scusa", "Non posso", "Non ho le informazioni","Purtroppo non posso", "Mi scuso ma","Mi spiace"]
     ###TODO:GESTIRE EVENTUALI PUNTEGGIATURE
     if not any(invalid_response in response for invalid_response in invalid_responses):
         to_return=True
@@ -75,12 +78,14 @@ def image_input_to_chat(message_text: str,
             }
         ],
         "max_tokens": max_tokens,
+        #temperature:0.3
     }
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload).json()
     while not is_valid_response(response.get('choices')[0].get('message').get('content')):
         response=requests.post("https://api.openai.com/v1/chat/completions",headers=headers,json=payload).json()
         ##TODO:AGGIUNGI CONDIZIONE D'USCITA PER EVITARE CHE QUI CI STIAMO ALL?INFINITO
     message_response = response.get('choices')[0].get('message').get('content')
+
     return message_response,content_list
 
 def get_text_to_chat(message_hist: List,
@@ -101,6 +106,7 @@ def get_text_to_chat(message_hist: List,
         "model": model,
         "messages":message_list,
         "max_tokens": max_tokens,
+        #"temperature": 0.3
     }
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload).json()
     while not is_valid_response(response.get('choices')[0].get('message').get('content')):
